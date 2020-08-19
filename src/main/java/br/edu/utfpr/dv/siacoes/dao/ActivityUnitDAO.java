@@ -12,12 +12,13 @@ import br.edu.utfpr.dv.siacoes.log.UpdateEvent;
 import br.edu.utfpr.dv.siacoes.model.ActivityUnit;
 
 public class ActivityUnitDAO {
+  // inicializando as variavéis que são utilizadas em todos métodos
+	Connection conn = null;
+	PreparedStatement pStmt = null;
+	ResultSet rs = null;
+	Statement stmt = null;
 	
-	public List<ActivityUnit> listAll() throws SQLException{
-		Connection conn = null;
-		Statement stmt = null;
-		ResultSet rs = null;
-		
+	public List<ActivityUnit> listAll() throws SQLException{		
 		try{
 			conn = ConnectionDAO.getInstance().getConnection();
 			stmt = conn.createStatement();
@@ -32,20 +33,11 @@ public class ActivityUnitDAO {
 			
 			return list;
 		}finally{
-			if((rs != null) && !rs.isClosed())
-				rs.close();
-			if((stmt != null) && !stmt.isClosed())
-				stmt.close();
-			if((conn != null) && !conn.isClosed())
-				conn.close();
+			ConnectionCloseStatement(conn, stmt, rs);
 		}
 	}
 	
-	public ActivityUnit findById(int id) throws SQLException{
-		Connection conn = null;
-		PreparedStatement stmt = null;
-		ResultSet rs = null;
-		
+	public ActivityUnit findById(int id) throws SQLException{		
 		try{
 			conn = ConnectionDAO.getInstance().getConnection();
 			stmt = conn.prepareStatement("SELECT * FROM activityunit WHERE idActivityUnit=?");
@@ -60,42 +52,34 @@ public class ActivityUnitDAO {
 				return null;
 			}
 		}finally{
-			if((rs != null) && !rs.isClosed())
-				rs.close();
-			if((stmt != null) && !stmt.isClosed())
-				stmt.close();
-			if((conn != null) && !conn.isClosed())
-				conn.close();
+      ConnectionClosePreparedStatement(conn, pStmt, rs);
 		}
 	}
 	
 	public int save(int idUser, ActivityUnit unit) throws SQLException{
 		boolean insert = (unit.getIdActivityUnit() == 0);
-		Connection conn = null;
-		PreparedStatement stmt = null;
-		ResultSet rs = null;
 		
 		try{
 			conn = ConnectionDAO.getInstance().getConnection();
 			
 			if(insert){
-				stmt = conn.prepareStatement("INSERT INTO activityunit(description, fillAmount, amountDescription) VALUES(?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+				pStmt = conn.prepareStatement("INSERT INTO activityunit(description, fillAmount, amountDescription) VALUES(?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
 			}else{
-				stmt = conn.prepareStatement("UPDATE activityunit SET description=?, fillAmount=?, amountDescription=? WHERE idActivityUnit=?");
+				pStmt = conn.prepareStatement("UPDATE activityunit SET description=?, fillAmount=?, amountDescription=? WHERE idActivityUnit=?");
 			}
 			
-			stmt.setString(1, unit.getDescription());
-			stmt.setInt(2, (unit.isFillAmount() ? 1 : 0));
-			stmt.setString(3, unit.getAmountDescription());
+			pStmt.setString(1, unit.getDescription());
+			pStmt.setInt(2, (unit.isFillAmount() ? 1 : 0));
+			pStmt.setString(3, unit.getAmountDescription());
 			
 			if(!insert){
-				stmt.setInt(4, unit.getIdActivityUnit());
+				pStmt.setInt(4, unit.getIdActivityUnit());
 			}
 			
-			stmt.execute();
+			pStmt.execute();
 			
 			if(insert){
-				rs = stmt.getGeneratedKeys();
+				rs = pStmt.getGeneratedKeys();
 				
 				if(rs.next()){
 					unit.setIdActivityUnit(rs.getInt(1));
@@ -108,12 +92,7 @@ public class ActivityUnitDAO {
 			
 			return unit.getIdActivityUnit();
 		}finally{
-			if((rs != null) && !rs.isClosed())
-				rs.close();
-			if((stmt != null) && !stmt.isClosed())
-				stmt.close();
-			if((conn != null) && !conn.isClosed())
-				conn.close();
+      ConnectionClosePreparedStatement(conn, pStmt, rs);
 		}
 	}
 	
@@ -128,4 +107,22 @@ public class ActivityUnitDAO {
 		return unit;
 	}
 
+  //criado metódos privados com trechos de código repetidos
+  private void ConnectionClosePreparedStatement(Connection conn, PreparedStatement stmt, ResultSet rs) {
+		if((rs != null) && !rs.isClosed())
+			rs.close();
+		if((stmt != null) && !stmt.isClosed())
+			stmt.close();
+		if((conn != null) && !conn.isClosed())
+			conn.close();
+	}	
+
+   private void ConnectionCloseStatement(Connection conn, Statement stmt, ResultSet rs) {
+		if((rs != null) && !rs.isClosed())
+			rs.close();
+		if((stmt != null) && !stmt.isClosed())
+			stmt.close();
+		if((conn != null) && !conn.isClosed())
+			conn.close();
+	}	
 }

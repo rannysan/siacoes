@@ -15,21 +15,22 @@ import br.edu.utfpr.dv.siacoes.model.Module;
 import br.edu.utfpr.dv.siacoes.model.User;
 
 public class BugReportDAO {
+  // inicializando as variavéis que são utilizadas em todos métodos
+	Connection conn = null;
+	PreparedStatement pStmt = null;
+	ResultSet rs = null;
+	Statement stmt = null;
 	
 	public BugReport findById(int id) throws SQLException{
-		Connection conn = null;
-		PreparedStatement stmt = null;
-		ResultSet rs = null;
-		
 		try{
 			conn = ConnectionDAO.getInstance().getConnection();
-			stmt = conn.prepareStatement("SELECT bugreport.*, \"user\".name " + 
+			pStmt = conn.prepareStatement("SELECT bugreport.*, \"user\".name " + 
 				"FROM bugreport INNER JOIN \"user\" ON \"user\".idUser=bugreport.idUser " +
 				"WHERE idBugReport = ?");
 		
-			stmt.setInt(1, id);
+			pStmt.setInt(1, id);
 			
-			rs = stmt.executeQuery();
+			rs = pStmt.executeQuery();
 			
 			if(rs.next()){
 				return this.loadObject(rs);
@@ -37,20 +38,11 @@ public class BugReportDAO {
 				return null;
 			}
 		}finally{
-			if((rs != null) && !rs.isClosed())
-				rs.close();
-			if((stmt != null) && !stmt.isClosed())
-				stmt.close();
-			if((conn != null) && !conn.isClosed())
-				conn.close();
+      ConnectionClosePreparedStatement(conn, pStmt, rs);
 		}
 	}
 	
-	public List<BugReport> listAll() throws SQLException{
-		Connection conn = null;
-		Statement stmt = null;
-		ResultSet rs = null;
-		
+	public List<BugReport> listAll() throws SQLException{		
 		try{
 			conn = ConnectionDAO.getInstance().getConnection();
 			stmt = conn.createStatement();
@@ -66,52 +58,44 @@ public class BugReportDAO {
 			
 			return list;
 		}finally{
-			if((rs != null) && !rs.isClosed())
-				rs.close();
-			if((stmt != null) && !stmt.isClosed())
-				stmt.close();
-			if((conn != null) && !conn.isClosed())
-				conn.close();
+			ConnectionCloseStatement(conn, stmt, rs);
 		}
 	}
 	
 	public int save(BugReport bug) throws SQLException{
 		boolean insert = (bug.getIdBugReport() == 0);
-		Connection conn = null;
-		PreparedStatement stmt = null;
-		ResultSet rs = null;
 		
 		try{
 			conn = ConnectionDAO.getInstance().getConnection();
 			
 			if(insert){
-				stmt = conn.prepareStatement("INSERT INTO bugreport(idUser, module, title, description, reportDate, type, status, statusDate, statusDescription) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
+				pStmt = conn.prepareStatement("INSERT INTO bugreport(idUser, module, title, description, reportDate, type, status, statusDate, statusDescription) VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?)", Statement.RETURN_GENERATED_KEYS);
 			}else{
-				stmt = conn.prepareStatement("UPDATE bugreport SET idUser=?, module=?, title=?, description=?, reportDate=?, type=?, status=?, statusDate=?, statusDescription=? WHERE idBugReport=?");
+				pStmt = conn.prepareStatement("UPDATE bugreport SET idUser=?, module=?, title=?, description=?, reportDate=?, type=?, status=?, statusDate=?, statusDescription=? WHERE idBugReport=?");
 			}
 			
-			stmt.setInt(1, bug.getUser().getIdUser());
-			stmt.setInt(2, bug.getModule().getValue());
-			stmt.setString(3, bug.getTitle());
-			stmt.setString(4, bug.getDescription());
-			stmt.setDate(5, new java.sql.Date(bug.getReportDate().getTime()));
-			stmt.setInt(6, bug.getType().getValue());
-			stmt.setInt(7, bug.getStatus().getValue());
+			pStmt.setInt(1, bug.getUser().getIdUser());
+			pStmt.setInt(2, bug.getModule().getValue());
+			pStmt.setString(3, bug.getTitle());
+			pStmt.setString(4, bug.getDescription());
+			pStmt.setDate(5, new java.sql.Date(bug.getReportDate().getTime()));
+			pStmt.setInt(6, bug.getType().getValue());
+			pStmt.setInt(7, bug.getStatus().getValue());
 			if(bug.getStatus() == BugStatus.REPORTED){
-				stmt.setNull(8, Types.DATE);
+				pStmt.setNull(8, Types.DATE);
 			}else{
-				stmt.setDate(8, new java.sql.Date(bug.getStatusDate().getTime()));
+				pStmt.setDate(8, new java.sql.Date(bug.getStatusDate().getTime()));
 			}
-			stmt.setString(9, bug.getStatusDescription());
+			pStmt.setString(9, bug.getStatusDescription());
 			
 			if(!insert){
-				stmt.setInt(10, bug.getIdBugReport());
+				pStmt.setInt(10, bug.getIdBugReport());
 			}
 			
-			stmt.execute();
+			pStmt.execute();
 			
 			if(insert){
-				rs = stmt.getGeneratedKeys();
+				rs = pStmt.getGeneratedKeys();
 				
 				if(rs.next()){
 					bug.setIdBugReport(rs.getInt(1));
@@ -120,12 +104,7 @@ public class BugReportDAO {
 			
 			return bug.getIdBugReport();
 		}finally{
-			if((rs != null) && !rs.isClosed())
-				rs.close();
-			if((stmt != null) && !stmt.isClosed())
-				stmt.close();
-			if((conn != null) && !conn.isClosed())
-				conn.close();
+      ConnectionClosePreparedStatement(conn, pStmt, rs);
 		}
 	}
 	
@@ -148,4 +127,22 @@ public class BugReportDAO {
 		return bug;
 	}
 
+  //criado metódos privados com trechos de código repetidos
+  private void ConnectionClosePreparedStatement(Connection conn, PreparedStatement stmt, ResultSet rs) {
+		if((rs != null) && !rs.isClosed())
+			rs.close();
+		if((stmt != null) && !stmt.isClosed())
+			stmt.close();
+		if((conn != null) && !conn.isClosed())
+			conn.close();
+	}	
+
+   private void ConnectionCloseStatement(Connection conn, Statement stmt, ResultSet rs) {
+		if((rs != null) && !rs.isClosed())
+			rs.close();
+		if((stmt != null) && !stmt.isClosed())
+			stmt.close();
+		if((conn != null) && !conn.isClosed())
+			conn.close();
+	}	
 }
